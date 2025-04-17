@@ -83,7 +83,7 @@ module Win32
 
           unless nvdom.empty?
             @search = [ nvdom ]
-            udmnd = get_item_property(TCPIP_NT, 'UseDomainNameDevolution').to_i
+            udmnd = get_item_property(TCPIP_NT, 'UseDomainNameDevolution', numeric: true)
             if udmnd != 0
               if /^\w+\./ =~ nvdom
                 devo = $'
@@ -126,17 +126,17 @@ module Win32
         [ search.uniq, nameserver.uniq ]
       end
 
-      def get_item_property(path, name, expand: false)
+      def get_item_property(path, name, expand: false, numeric: false)
         if defined?(Win32::Registry)
           Registry::HKEY_LOCAL_MACHINE.open(path) do |reg|
-            expand ? reg.read_s_expand(name) : reg.read_s(name)
+            numeric ? reg.read_i(name) : expand ? reg.read_s_expand(name) : reg.read_s(name)
           rescue Registry::Error
-            ""
+            numeric ? 0 : ""
           end
         else
           cmd = "Get-ItemProperty -Path 'HKLM:\\#{path}' -Name '#{name}' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty '#{name}'"
           output, _ = Open3.capture2('powershell', '-Command', cmd)
-          output.strip
+          numeric ? Integer(output) : output.strip
         end
       end
     end
